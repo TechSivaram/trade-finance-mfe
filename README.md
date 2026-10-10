@@ -175,7 +175,9 @@ npm run build
 npm run dev
 ```
 
-## ⚙️ Install and build workflow\n\n### What happens during `npm install`?
+## ⚙️ Install and build workflow
+
+### What happens during `npm install`?
 
 The root `package.json` declares the workspace patterns `apps/*` and `packages/*`. npm discovers each workspace and links local workspace packages to applications that declare them as dependencies. This means `@trade-finance/mf-contracts` can be consumed locally without publishing it to the npm registry.
 
