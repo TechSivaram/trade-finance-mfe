@@ -1,0 +1,28 @@
+{
+  "name": "payment-mf",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "ng build --configuration development",
+    "preview": "vite preview --host 0.0.0.0 --port 5003 --strictPort --outDir dist/payment-mf/browser",
+    "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@angular/common": "^19.2.0",
+    "@angular/compiler": "^19.2.0",
+    "@angular/core": "^19.2.0",
+    "@angular/elements": "^19.2.0",
+    "@angular/platform-browser": "^19.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.8.0",
+    "zone.js": "~0.15.0",
+    "@trade-finance/mf-contracts": "*"
+  },
+  "devDependencies": {
+    "@angular/build": "^19.2.0",
+    "@angular/cli": "^19.2.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5",
+    "@angular/compiler-cli": "^19.2.0"
+  }
+}

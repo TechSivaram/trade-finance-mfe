@@ -1,0 +1,11 @@
+@import url("../../shell/src/style.css");
+
+.payment-detail-panel { margin-bottom: 18px; }
+.payment-state { padding: 4px 20px 16px; margin: 0; color: #718195; font-size: 13px; }
+.payment-error { color: #b42318; }
+.payment-details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; padding: 6px 20px 18px; }
+.payment-details-grid > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.payment-details-grid span { color: #7b8998; font-size: 11px; }
+.payment-details-grid strong { color: #24384c; font-size: 13px; overflow-wrap: anywhere; }
+.mock-note { margin: 0; padding: 12px 20px; border-top: 1px solid #edf1f5; color: #8a97a5; font-size: 10px; }
+@media (max-width: 760px) { .payment-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

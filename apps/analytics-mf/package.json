@@ -1,0 +1,19 @@
+{
+  "name": "analytics-mf",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node -e \"require('node:fs').copyFileSync('standalone.html', 'dist/index.html')\"",
+    "preview": "vite preview --host 0.0.0.0 --port 5004 --strictPort",
+    "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "vue": "^3.5.13",
+    "vite": "^6.0.5",
+    "typescript": "~5.7.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1"
+  }
+}

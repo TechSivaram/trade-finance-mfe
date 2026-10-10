@@ -1,0 +1,17 @@
+{
+  "name": "trade-finance-mfe",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w dashboard-mf && npm run build -w trade-mf && npm run build -w payment-mf && npm run build -w analytics-mf && concurrently -k -n shell,dashboard,trade,payment,analytics -c blue,green,yellow,magenta,cyan \"npm run dev -w shell\" \"npm run preview -w dashboard-mf\" \"npm run preview -w trade-mf\" \"npm run preview -w payment-mf\" \"npm run preview -w analytics-mf\"",
+    "build": "npm run build -w dashboard-mf && npm run build -w trade-mf && npm run build -w payment-mf && npm run build -w analytics-mf && npm run build -w shell",
+    "clean": "npm run clean -w dashboard-mf --if-present && npm run clean -w trade-mf --if-present && npm run clean -w payment-mf --if-present && npm run clean -w analytics-mf --if-present && npm run clean -w shell --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
