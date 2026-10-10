@@ -178,6 +178,11 @@ npm run dev
 ```
 
 ## ⚙️ Install and build workflow
+<<<<<<< HEAD
+=======
+
+### What happens during `npm install`?
+>>>>>>> 4bfc20d71c4ed6a400a14193b5416f23c29269f2
 
 ### What happens during `npm install`?
 
