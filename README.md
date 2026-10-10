@@ -22,7 +22,7 @@
 - [Architecture at a glance](#-architecture-at-a-glance)
 - [MFE integration and federation approach](#-mfe-integration-and-federation-approach)
 - [Applications and ports](#-applications-and-ports)
-- [Quick start](#-quick-start)
+- [Quick start](#-quick-start)\n- [Install and build workflow](#-install-and-build-workflow)
 - [Authentication with TSCloak](#-authentication-with-tscloak)
 - [Logout and sign-in lifecycle](#-logout-and-sign-in-lifecycle)
 - [Microfrontend communication](#-microfrontend-communication)
@@ -174,6 +174,56 @@ npm install
 npm run build
 npm run dev
 ```
+
+## ⚙️ Install and build workflow\n\n### What happens during `npm install`?
+
+The root `package.json` declares the workspace patterns `apps/*` and `packages/*`. npm discovers each workspace and links local workspace packages to applications that declare them as dependencies. This means `@trade-finance/mf-contracts` can be consumed locally without publishing it to the npm registry.
+
+```mermaid
+flowchart TD
+    ROOT["Root package.json<br/>workspaces: apps/*, packages/*"]
+    INSTALL["npm install"]
+    APPS["Discover app workspaces<br/>apps/shell, dashboard-mf,<br/>trade-mf, payment-mf, analytics-mf"]
+    PKG["Discover packages/mf-contracts<br/>name: @trade-finance/mf-contracts"]
+    LINK["Resolve/link local workspace dependency<br/>for apps that declare it"]
+    DEPS["Install external dependencies"]
+
+    ROOT --> INSTALL
+    INSTALL --> APPS
+    INSTALL --> PKG
+    INSTALL --> DEPS
+    APPS --> LINK
+    PKG --> LINK
+```
+
+> **Important:** npm only makes a workspace package available to an app when that app declares it as a dependency. The root workspace pattern discovers the package; it does not automatically make every app depend on it.
+
+### Where does `packages/` fit during the build?
+
+`packages/mf-contracts` is shared source code and contract definitions—not a separately running application. During an app's build, its build tooling resolves imports from `@trade-finance/mf-contracts`. Depending on the package exports and build configuration, the helper code is bundled into the consuming app, while TypeScript declarations provide compile-time type checking. The exact bundle behavior is controlled by the current package and app build configurations.
+
+```mermaid
+flowchart TD
+    CMD["npm run build"]
+    ROOTSCRIPT["Root build script"]
+    APPBUILDS["Build each configured application"]
+    SHARED["packages/mf-contracts<br/>event names, payload types,<br/>emitMfEvent helper"]
+    RESOLVE["Vite / framework build tooling<br/>resolves package imports"]
+    OUTPUTS["Separate application build outputs"]
+    BROWSER["Browser runtime"]
+    EVENTS["window CustomEvent events<br/>carry payloads between MFEs"]
+
+    CMD --> ROOTSCRIPT --> APPBUILDS
+    SHARED --> RESOLVE
+    APPBUILDS --> RESOLVE --> OUTPUTS
+    OUTPUTS --> BROWSER --> EVENTS
+```
+
+The key distinction is:
+
+- **Install time:** npm discovers and links local workspaces and installs external dependencies.
+- **Build time:** each application resolves the shared package imports and produces its own build output.
+- **Runtime:** the browser events carry messages between MFEs in the same page. `packages/mf-contracts` is not a runtime event broker and this setup is not Module Federation.
 
 Open **<http://localhost:5000>**. The Shell redirects unauthenticated users to TSCloak. Once authenticated, you can navigate between Overview, Trade finance, Payments, and Trade analytics.
 
