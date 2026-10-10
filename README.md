@@ -297,6 +297,46 @@ sequenceDiagram
 
 **Important:** browser events are not a message broker and do not persist messages. The Shell keeps demo selection state in memory and replays it when Trade MF requests the context. This is suitable for a learning demo; production data must be retrieved from an API.
 
+### How applications reference the shared contracts package
+
+The repository uses **npm workspaces** to make the shared package available to applications without publishing it to a package registry. The root `package.json` declares both `apps/*` and `packages/*` as workspaces, so npm recognizes `packages/mf-contracts` as the local package `@trade-finance/mf-contracts`.
+
+For an MFE to use the package, it declares the dependency in its own `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@trade-finance/mf-contracts": "*"
+  }
+}
+```
+
+Then application code imports the shared helper and types using the package name:
+
+```ts
+import { emitMfEvent } from '@trade-finance/mf-contracts';
+import type { PaymentSelectedDetail } from '@trade-finance/mf-contracts';
+
+emitMfEvent('payment:selected', {
+  paymentId: 'PAY-1001',
+  beneficiary: 'Example beneficiary',
+  amount: 'USD 1,250.00',
+  status: 'Processing',
+});
+```
+
+The example payload is illustrative; use the `PaymentSelectedDetail` definition in `packages/mf-contracts/src/index.d.ts` as the source of truth for the allowed fields and values. TypeScript checks the event name and payload shape at build time.
+
+### What happens at build time vs. runtime?
+
+1. **Install/workspace resolution:** `npm install` links the local workspace package for apps that declare it as a dependency. No separate registry publish is required.
+2. **Build time:** Vite or the relevant application build tooling resolves imports from `@trade-finance/mf-contracts` and bundles the helper into the consuming application as configured by that build. Shared TypeScript declarations help keep event names and payloads consistent.
+3. **Runtime communication:** the `emitMfEvent` helper calls `window.dispatchEvent(new CustomEvent(name, { detail }))`. The consumer listens for the same event on `window` and reads `event.detail`. The package provides the contract and helper; it is **not** a runtime event broker.
+
+For example, Payment MF emits `payment:selected`, the Shell listens and stores the selection, and Trade MF can request/re-receive the selected payment context after it mounts. This works because the modules run in the same browser page.
+
+> **Architect interview summary:** “We use npm workspaces to manage a shared TypeScript contracts package. Each MFE declares it as a dependency and imports common event types and the event helper. This keeps event names and payloads consistent at build time, while actual cross-MFE communication happens at runtime through browser `CustomEvent`s on `window`. This is workspace package sharing, not Module Federation.”
+
 ## 💳 Payment-selection journey
 
 1. Open **Payments** and select a payment row.
