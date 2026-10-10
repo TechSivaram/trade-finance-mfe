@@ -18,7 +18,9 @@
 ## 🧭 Contents
 
 - [Overview](#-overview)
+- [Technology stack and tools](#-technology-stack-and-tools)
 - [Architecture at a glance](#-architecture-at-a-glance)
+- [MFE integration and federation approach](#-mfe-integration-and-federation-approach)
 - [Applications and ports](#-applications-and-ports)
 - [Quick start](#-quick-start)
 - [Authentication with TSCloak](#-authentication-with-tscloak)
@@ -35,6 +37,47 @@ TradeFlow is a learning/demo application for exploring a **Shell + independently
 
 > [!IMPORTANT]
 > This is a frontend demo. The data is illustrative, and the payment-details service is an in-memory mock—not a deployed HTTP API or a Spring Boot backend.
+
+## 🧰 Technology stack and tools
+
+<div align="center">
+
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=20232A&style=flat-square)
+![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white&style=flat-square)
+![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white&style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white&style=flat-square)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white&style=flat-square)
+![OIDC](https://img.shields.io/badge/OIDC-PKCE-16856b?style=flat-square)
+
+</div>
+
+### Core technologies
+
+| Area | Technology | How it is used |
+|---|---|---|
+| Application composition | React 18 + React Router 6 | Shell layout, route handling, navigation, profile menu, and authentication gating |
+| MFE integration / runtime loading | Vite-built remote bundles + Web Components / Custom Elements | Shell loads separately built MFE assets at runtime; Angular and Vue modules are exposed as custom elements |
+| Dashboard UI | React 18 | Overview dashboard and trade activity |
+| Trade UI | React 18 + TypeScript | Trade workspace and selected-payment details |
+| Payments UI | Angular 19 + Angular Elements | Payment module exposed as a custom element |
+| Analytics UI | Vue 3 | Analytics module exposed as a custom element |
+| Language and contracts | TypeScript 5.7 | Typed UI code and shared event payload definitions |
+| Build and local serving | Vite 6, Angular CLI/build, TypeScript compiler | Builds and serves the independently built modules |
+| Workspace/package management | npm workspaces | Manages apps and the shared `@trade-finance/mf-contracts` package from the repository root |
+| Browser communication | `window` + `CustomEvent` | Publishes and listens for events such as `payment:selected` |
+| Authentication | TSCloak + OIDC Authorization Code Flow with PKCE | Browser sign-in, callback handling, user claims, and logout redirect |
+| OIDC client library | `oidc-client-ts` | Implements browser-side OIDC protocol interactions |
+| Payment data | TypeScript in-memory mock service | Simulates loading payment details; no HTTP backend is connected yet |
+| Diagrams and docs | Markdown + Mermaid + Shields.io badges | Documents architecture and sequence flows in the README |
+
+### Developer tools
+
+- **Node.js and npm** — install dependencies and run the workspace scripts.
+- **Browser DevTools** — inspect redirects, OIDC callback errors, browser storage, custom events, and network requests.
+- **Mermaid-compatible Markdown viewer** — render the architecture and sequence diagrams (for example, GitHub).
+- **TSCloak web console** — configure the public SPA client, redirect URIs, and allowed scopes.
+
+> **Stack boundary:** this repository currently contains frontend applications and an in-memory mock service. Spring Boot, a database, automated test tooling, and production observability are not wired into this demo yet.
 
 ## 🏗️ Architecture at a glance
 
@@ -65,6 +108,33 @@ flowchart TB
     class D,T,P,A mf;
     class IDP identity;
 ```
+
+## 🧩 MFE integration and federation approach
+
+**This project does not currently use Webpack Module Federation or a configured Vite Module Federation plugin.** It uses separately built Vite assets and browser-native Web Components / Custom Elements for the Angular Payment MF and Vue Analytics MF. The Shell loads the feature assets at runtime and coordinates navigation and events.
+
+```mermaid
+flowchart LR
+    S[React Shell] -->|loads built asset at runtime| P[Payment bundle]
+    S -->|loads built asset at runtime| A[Analytics bundle]
+    S -->|loads feature app| T[Trade MF]
+    S -->|loads feature app| D[Dashboard MF]
+    P --> PE[Angular Element: payment-app]
+    A --> AE[Vue Element: trade-analytics]
+    P -. "CustomEvent" .-> W((window event bus))
+    W -. "CustomEvent" .-> S
+    S -. "selection context event" .-> W
+    W -.-> T
+```
+
+### What this means
+
+- **Build-time:** each application is built with its own tooling/configuration (Vite and the relevant framework build setup).
+- **Runtime composition:** the Shell loads the built feature assets; Angular and Vue features register custom elements that the Shell can render.
+- **Cross-MFE communication:** shared TypeScript contracts document browser `CustomEvent` names and payloads. Events are available to modules loaded in the same browser page.
+- **Not Module Federation:** we do not currently configure remote module exposure/consumption or shared dependency negotiation through `ModuleFederationPlugin` or `@module-federation/vite`.
+
+If the project later adopts **Module Federation**, the architecture documentation should be updated to name the chosen implementation and document remote-entry URLs, exposed modules, shared dependencies, version compatibility, and fallback behavior. Do not describe the current setup as “Webpack Module Federation.”
 
 ### Design principles
 
