@@ -22,7 +22,8 @@
 - [Architecture at a glance](#-architecture-at-a-glance)
 - [MFE integration and federation approach](#-mfe-integration-and-federation-approach)
 - [Applications and ports](#-applications-and-ports)
-- [Quick start](#-quick-start)\n- [Install and build workflow](#-install-and-build-workflow)
+- [Quick start](#-quick-start)
+- [Install and build workflow](#-install-and-build-workflow)
 - [Authentication with TSCloak](#-authentication-with-tscloak)
 - [Logout and sign-in lifecycle](#-logout-and-sign-in-lifecycle)
 - [Microfrontend communication](#-microfrontend-communication)
@@ -56,7 +57,7 @@ TradeFlow is a learning/demo application for exploring a **Shell + independently
 | Area | Technology | How it is used |
 |---|---|---|
 | Application composition | React 18 + React Router 6 | Shell layout, route handling, navigation, profile menu, and authentication gating |
-| MFE integration / runtime loading | Vite-built remote bundles + Web Components / Custom Elements | Shell loads separately built MFE assets at runtime; Angular and Vue modules are exposed as custom elements |
+| MFE integration / runtime loading | `@originjs/vite-plugin-federation` + Web Components / Custom Elements | Shell federates the React Dashboard and Trade remotes; Angular Payment and Vue Analytics are loaded as custom elements |
 | Dashboard UI | React 18 | Overview dashboard and trade activity |
 | Trade UI | React 18 + TypeScript | Trade workspace and selected-payment details |
 | Payments UI | Angular 19 + Angular Elements | Payment module exposed as a custom element |
@@ -87,10 +88,10 @@ flowchart TB
     U --> S[Shell · React · :5000]
     IDP <-->|OIDC Authorization Code + PKCE| S
 
-    S --> D[Dashboard MF · :5001]
-    S --> T[Trade MF · :5002]
-    S --> P[Payment MF · :5003]
-    S --> A[Analytics MF · :5004]
+    S -->|Vite federation remote| D[Dashboard MF · :5001]
+    S -->|Vite federation remote| T[Trade MF · :5002]
+    S -->|Custom Element asset| P[Payment MF · :5003]
+    S -->|Custom Element asset| A[Analytics MF · :5004]
 
     C[Shared MF Contracts] -. event names + payload types .-> S
     C -.-> P
@@ -111,7 +112,7 @@ flowchart TB
 
 ## 🧩 MFE integration and federation approach
 
-**This project does not currently use Webpack Module Federation or a configured Vite Module Federation plugin.** It uses separately built Vite assets and browser-native Web Components / Custom Elements for the Angular Payment MF and Vue Analytics MF. The Shell loads the feature assets at runtime and coordinates navigation and events.
+**This project uses a hybrid MFE integration approach.** The React Shell, Dashboard MF, and Trade MF are configured with `@originjs/vite-plugin-federation`: the Shell declares the Dashboard and Trade remotes, and those two applications expose modules through `remoteEntry.js`. The Angular Payment MF and Vue Analytics MF are loaded as separately built assets and exposed to the Shell through browser Custom Elements. Browser `CustomEvent`s coordinate selected-payment context across the modules.
 
 ```mermaid
 flowchart LR
@@ -129,12 +130,13 @@ flowchart LR
 
 ### What this means
 
-- **Build-time:** each application is built with its own tooling/configuration (Vite and the relevant framework build setup).
-- **Runtime composition:** the Shell loads the built feature assets; Angular and Vue features register custom elements that the Shell can render.
-- **Cross-MFE communication:** shared TypeScript contracts document browser `CustomEvent` names and payloads. Events are available to modules loaded in the same browser page.
-- **Not Module Federation:** we do not currently configure remote module exposure/consumption or shared dependency negotiation through `ModuleFederationPlugin` or `@module-federation/vite`.
+- **Federation for React MFEs:** the Shell configures `dashboard` and `trade` remotes using `http://localhost:5001/assets/remoteEntry.js` and `http://localhost:5002/assets/remoteEntry.js`. The Dashboard and Trade Vite configs expose `./DashboardApp` and `./TradeApp` through `remoteEntry.js`.
+- **Shared federation dependencies:** the Shell and React remotes list React / React DOM as shared dependencies; the Shell also lists React Router.
+- **Custom Elements for Angular and Vue:** Payment MF is loaded from its built scripts and rendered as `<payment-app>`; Analytics MF is loaded as `trade-analytics.js` and rendered as `<trade-analytics>`.
+- **Browser-event communication:** the shared TypeScript contracts document event names and payloads. `CustomEvent`s are available to modules running in the same browser page.
+- **Scope of federation:** the configured federation remotes are Dashboard and Trade. Payment and Analytics use the separate-asset / Custom Element integration path in this bundle.
 
-If the project later adopts **Module Federation**, the architecture documentation should be updated to name the chosen implementation and document remote-entry URLs, exposed modules, shared dependencies, version compatibility, and fallback behavior. Do not describe the current setup as “Webpack Module Federation.”
+This is **Vite Module Federation via `@originjs/vite-plugin-federation`**, not Webpack Module Federation. If the integration changes, update the remote-entry URLs, exposed module names, shared dependency configuration, and diagram together.
 
 ### Design principles
 
@@ -155,7 +157,7 @@ If the project later adopts **Module Federation**, the architecture documentatio
 | Analytics MF | `http://localhost:5004` | Trade analytics view |
 | Shared contracts | workspace package | Event names, payload types, event helper |
 
-The Shell loads feature modules at runtime. The root `dev` command builds the feature bundles first and then starts the Shell and MF preview servers together.
+The Shell composes the React Dashboard and Trade modules through Vite federation and loads Payment / Analytics as separately built Custom Element assets. The root scripts coordinate build and local serving; see the root `package.json` for the exact command sequence.
 
 ## 🚀 Quick start
 
@@ -175,9 +177,11 @@ npm run build
 npm run dev
 ```
 
-## ⚙️ Install and build workflow\n\n### What happens during `npm install`?
+## ⚙️ Install and build workflow
 
-The root `package.json` declares the workspace patterns `apps/*` and `packages/*`. npm discovers each workspace and links local workspace packages to applications that declare them as dependencies. This means `@trade-finance/mf-contracts` can be consumed locally without publishing it to the npm registry.
+### What happens during `npm install`?
+
+The root `package.json` declares the workspace patterns `apps/*` and `packages/*`. npm discovers each workspace and links local workspace packages to applications that declare them as dependencies. This makes `@trade-finance/mf-contracts` available locally without publishing it to the npm registry.
 
 ```mermaid
 flowchart TD
@@ -200,7 +204,7 @@ flowchart TD
 
 ### Where does `packages/` fit during the build?
 
-`packages/mf-contracts` is shared source code and contract definitions—not a separately running application. During an app's build, its build tooling resolves imports from `@trade-finance/mf-contracts`. Depending on the package exports and build configuration, the helper code is bundled into the consuming app, while TypeScript declarations provide compile-time type checking. The exact bundle behavior is controlled by the current package and app build configurations.
+`packages/mf-contracts` contains shared source code and contract definitions; it is not a separately running application. During an app's build, its build tooling resolves imports from `@trade-finance/mf-contracts`. The exact output depends on the package exports and each app's build configuration.
 
 ```mermaid
 flowchart TD
@@ -222,8 +226,8 @@ flowchart TD
 The key distinction is:
 
 - **Install time:** npm discovers and links local workspaces and installs external dependencies.
-- **Build time:** each application resolves the shared package imports and produces its own build output.
-- **Runtime:** the browser events carry messages between MFEs in the same page. `packages/mf-contracts` is not a runtime event broker and this setup is not Module Federation.
+- **Build time:** each application resolves shared package imports and produces its own build output.
+- **Runtime:** browser events carry messages between MFEs in the same page. `packages/mf-contracts` is not a runtime event broker.
 
 Open **<http://localhost:5000>**. The Shell redirects unauthenticated users to TSCloak. Once authenticated, you can navigate between Overview, Trade finance, Payments, and Trade analytics.
 
